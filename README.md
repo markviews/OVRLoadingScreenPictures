@@ -1,6 +1,6 @@
 # LoadingPictures
 openvr program to show your vrchat pictures as a slideshow while in the loading screen.<br>
-I don't recement using this yet. I put this together in a few hours.. I will add a screenshot of it working and a official release after I fix the bugs in the next few days.
+I don't recommend using this yet. I put this together in a few hours.. I will add a screenshot of it working and a official release after I fix the bugs in the next few days.
 
 ### Bugs (I'll fix these soon)
 * vertical images are squished
