@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using UnityEngine;
-using UnityEngine.XR;
 
 public class LoadingScreenPictures : MonoBehaviour {
 
@@ -13,47 +13,76 @@ public class LoadingScreenPictures : MonoBehaviour {
     private float wait = 0.0f;
     private StreamReader reader;
     private Transform hmd;
+    private bool gameRunning = false;
 
     void Start() {
-        string log_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"Low\VRChat\VRChat";
-        string latestLog = new DirectoryInfo(log_path).GetFiles().OrderByDescending(f => f.LastWriteTime).First().ToString();
-        watchLog(latestLog);
+
     }
 
     void Update() {
         if (hmd == null) hmd = GameObject.Find("HMD").transform;
 
-        
-        if (reader == null) return;
-        string text = reader.ReadLine();
-        if (text != null) parseText(text);
-        
-
-        if (!overlay.isVisible) return;
         if (Time.time > wait) {
             wait += waitTime;
-            changeImage();
+
+            if (!gameRunning)
+                if (vrcIsOpen()) gameRunning = true;
+
+            if (overlay.isVisible)
+                changeImage();
+
         }
+
+        //parse the log when new info comes in
+        if (reader != null) {
+            string text = reader.ReadLine();
+            if (text != null) parseText(text);
+        }
+
     }
 
-    private void watchLog(string path) {
-        string fileName = path.Substring(path.LastIndexOf(@"\") + 1, path.Length - path.LastIndexOf(@"\") - 1);
-        Debug.Log(fileName);
+    private bool vrcIsOpen() {
+        System.Diagnostics.Process[] process = System.Diagnostics.Process.GetProcessesByName("vrchat");
+        if (process.Length == 0)
+            return false;
+
+        process[0].EnableRaisingEvents = true;
+        process[0].Exited += (sender, e) => {
+            gameRunning = false;
+            Debug.Log("VRChat closed.");
+            reader = null;
+            overlay.isVisible = false;
+        };
+
+        Debug.Log("VRChat Detected.");
+        StartCoroutine(watchLog());
+
+        return true;
+    }
+
+    IEnumerator watchLog() {
+        //wait 5 seconds for log to be created.. might prevent first loading screen from having pictures (need to test this)
+        yield return new WaitForSeconds(5);
+
+        string log_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"Low\VRChat\VRChat";
+        string latestLog = new DirectoryInfo(log_path).GetFiles().OrderByDescending(f => f.LastWriteTime).First().ToString();
+        string fileName = latestLog.Substring(latestLog.LastIndexOf(@"\") + 1, latestLog.Length - latestLog.LastIndexOf(@"\") - 1);
+
         var wh = new AutoResetEvent(false);
         var fsw = new FileSystemWatcher(".");
         fsw.Filter = fileName;
         fsw.EnableRaisingEvents = true;
         fsw.Changed += (s, e) => wh.Set();
 
-        var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var fs = new FileStream(latestLog, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         reader = new StreamReader(fs);
-        //wh.Close();
+        Debug.Log("Found log: " + fileName);
     }
 
     private void parseText(String text) {
         if (text.Length == 0) return;
 
-        if (text.Contains("Unloading scenes")) {
+        if (text.Contains("Unloading scenes")) {//entering loading screen
             overlay.isVisible = true;
 
             //fix rotation
@@ -62,7 +91,7 @@ public class LoadingScreenPictures : MonoBehaviour {
             overlay.transform.position = newpos;
             overlay.transform.rotation = new Quaternion(hmd.rotation.x, hmd.rotation.y, 0, hmd.rotation.w);
 
-        } else if (text.Contains("Waiting for world metadata load to finish.. ")) {
+        } else if (text.Contains("Waiting for world metadata load to finish.. ")) {//exiting loading screen
             overlay.isVisible = false;
         }
     }
