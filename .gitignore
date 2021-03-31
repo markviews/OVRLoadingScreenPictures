@@ -1,0 +1,12 @@
+
+Temp/
+obj/
+Logs/
+Packages/manifest.json
+Library/metadata/
+Library/PackageCache/
+Library/ScriptAssemblies/
+Library/ShaderCache/
+Library/StateCache/
+New Unity Project (4).sln
+Assembly-CSharp.csproj
