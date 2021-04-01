@@ -15,10 +15,6 @@ public class LoadingScreenPictures : MonoBehaviour {
     private Transform hmd;
     private bool gameRunning = false;
 
-    void Start() {
-
-    }
-
     void Update() {
         if (hmd == null) hmd = GameObject.Find("HMD").transform;
 
@@ -61,7 +57,11 @@ public class LoadingScreenPictures : MonoBehaviour {
     }
 
     IEnumerator watchLog() {
-        //wait 5 seconds for log to be created.. might prevent first loading screen from having pictures (need to test this)
+
+        fixRotation();
+        overlay.isVisible = true;
+
+        //wait 5 seconds for log to be created..
         yield return new WaitForSeconds(5);
 
         string log_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"Low\VRChat\VRChat";
@@ -84,16 +84,17 @@ public class LoadingScreenPictures : MonoBehaviour {
 
         if (text.Contains("Unloading scenes")) {//entering loading screen
             overlay.isVisible = true;
-
-            //fix rotation
-            Vector3 newpos = hmd.position + hmd.forward * 2;
-            newpos.y = 1.45f;
-            overlay.transform.position = newpos;
-            overlay.transform.rotation = new Quaternion(hmd.rotation.x, hmd.rotation.y, 0, hmd.rotation.w);
-
+            fixRotation();
         } else if (text.Contains("Waiting for world metadata load to finish.. ")) {//exiting loading screen
             overlay.isVisible = false;
         }
+    }
+
+    private void fixRotation() {
+        Vector3 newpos = hmd.position + hmd.forward * 2;
+        newpos.y = 1.47f;
+        overlay.transform.position = newpos;
+        overlay.transform.rotation = new Quaternion(hmd.rotation.x, hmd.rotation.y, 0, hmd.rotation.w);
     }
 
     private void changeImage() {
