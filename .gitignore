@@ -15,5 +15,8 @@ Assets/OVRLay/LICENSE.meta
 .vs/VRCLoadingPictures/v16/.suo
 *.log
 VRCLoadingPictures.sln
-Library/shadercompiler-UnityShaderCompiler.exe0.log
-Library/CurrentLayout.dwlt
+Library/
+Packages/
+.vs/
+.vsconfig
+UserSettings/
