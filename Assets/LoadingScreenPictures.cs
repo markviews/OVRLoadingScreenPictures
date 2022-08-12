@@ -2,10 +2,20 @@
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using UnityEngine;
 
+
 public class LoadingScreenPictures : MonoBehaviour {
+
+    [DllImport("user32.dll", EntryPoint = "FindWindow")]
+    private static extern IntPtr FindWindow(string sClass, string sWindow);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    static extern uint GetWindowModuleFileName(IntPtr hwnd, StringBuilder lpszFileName, uint cchFileNameMax);
+
 
     public Unity_Overlay overlay;
     public float waitTime;
@@ -21,8 +31,22 @@ public class LoadingScreenPictures : MonoBehaviour {
         if (Time.time > wait) {
             wait += waitTime;
 
-            if (!gameRunning)
-                if (vrcIsOpen()) gameRunning = true;
+
+            bool checkRunning = vrcIsOpen();
+            if (checkRunning != gameRunning) {
+                gameRunning = checkRunning;
+
+                if (gameRunning) {
+                    Debug.Log("VRChat opened.");
+                    StartCoroutine(watchLog());
+
+                } else {
+                    Debug.Log("VRChat closed.");
+                    reader = null;
+                    overlay.isVisible = false;
+                }
+            }
+                
 
             if (overlay.isVisible)
                 changeImage();
@@ -37,32 +61,28 @@ public class LoadingScreenPictures : MonoBehaviour {
 
     }
 
+
     private bool vrcIsOpen() {
-        System.Diagnostics.Process[] process = System.Diagnostics.Process.GetProcessesByName("vrchat");
-        if (process.Length == 0)
-            return false;
+        IntPtr nWinHandle = FindWindow(null, "VRChat");
+        if (nWinHandle == IntPtr.Zero) return false;
 
-        process[0].EnableRaisingEvents = true;
-        process[0].Exited += (sender, e) => {
-            gameRunning = false;
-            Debug.Log("VRChat closed.");
-            reader = null;
-            overlay.isVisible = false;
-        };
+        StringBuilder fileName = new StringBuilder(2000);
+        GetWindowModuleFileName(nWinHandle, fileName, 2000);
 
-        Debug.Log("VRChat Detected.");
-        StartCoroutine(watchLog());
+        //fileName comes back empty for the actual VRChat process becasue EAC hides it.
+        if (fileName.Length != 0) return false;
 
         return true;
     }
 
     IEnumerator watchLog() {
+        Debug.Log("searchng for log file...");
 
         fixRotation();
         overlay.isVisible = true;
 
-        //wait 5 seconds for log to be created..
-        yield return new WaitForSeconds(5);
+        //wait 15 seconds for log to be created..
+        yield return new WaitForSeconds(15);
 
         string log_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"Low\VRChat\VRChat";
         string latestLog = new DirectoryInfo(log_path).GetFiles().OrderByDescending(f => f.LastWriteTime).First().ToString();
@@ -83,9 +103,11 @@ public class LoadingScreenPictures : MonoBehaviour {
         if (text.Length == 0) return;
 
         if (text.Contains("Unloading scenes")) {//entering loading screen
+            Debug.Log("enabling overlay");
             overlay.isVisible = true;
             fixRotation();
-        } else if (text.Contains("Waiting for world metadata load to finish.. ")) {//exiting loading screen
+        } else if (text.Contains("Instantiating VRC_OBJECTS")) {//exiting loading screen (could also try 'Loading asset bundle: ' which is a bit earlier)
+            Debug.Log("disabling overlay");
             overlay.isVisible = false;
         }
     }
